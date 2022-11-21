@@ -11,3 +11,4 @@
 rootProject.name = 'sudoku'
 include 'client'
 include 'server'
+include 'sudokuComponent'
