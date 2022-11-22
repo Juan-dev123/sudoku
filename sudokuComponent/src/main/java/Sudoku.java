@@ -111,7 +111,7 @@ public class Sudoku{
         }
         //for var s in squares QUITARRR
         for (int i = 0; i < squares.size(); i++) {
-            if(digits.indexOf(grid2.charAt(i)) >= 0 && !assign(squares.get(i), String.valueOf(grid2.charAt(i)))){
+            if(digits.indexOf(grid2.charAt(i)) >= 0 && assign(values, squares.get(i), String.valueOf(grid2.charAt(i))) == null){
                 return false; //Fail if we can't assign the digit to the square.
             }
         }
@@ -122,14 +122,18 @@ public class Sudoku{
      * Eliminate all the other values (except digit) from values.get(square) and propagate.
      * @return False if a contradiction is detected
      */
-    private boolean assign(String square, String digit){
+    private Dictionary<String, String> assign(Dictionary<String, String> valuesP, String square, String digit){
         boolean result = true;
-        String other_values = values.get(square).replace(digit, "");
+        String other_values = valuesP.get(square).replace(digit, "");
         for(int i = 0; i < other_values.length(); i++){
             String tempDigit = String.valueOf(other_values.charAt(i));
-            result = result && (eliminate(square, tempDigit) ? true : false);
+            result = result && (eliminate(valuesP, square, tempDigit) != null ? true : false);
         }
-        return result;
+        if (result){
+            return valuesP;
+        }else {
+            return null; //Simulate a false
+        }
     }
 
     /**
@@ -138,22 +142,22 @@ public class Sudoku{
      * @param digit
      * @return False if a contradiction is detected
      */
-    private boolean eliminate(String square, String digit){
-        if(!values.get(square).contains(digit)){
-            return true; //The digit was already eliminated
+    private Dictionary<String, String> eliminate(Dictionary<String, String> valuesP, String square, String digit){
+        if(!valuesP.get(square).contains(digit)){
+            return valuesP; //The digit was already eliminated
         }
-        String tempDigits = values.get(square).replace(digit, "");
-        values.put(square, tempDigits);
+        String tempDigits = valuesP.get(square).replace(digit, "");
+        valuesP.put(square, tempDigits);
         // If a square is reduced to one value d2, then eliminate d2 from the peers.
-        if (values.get(square).length() == 0){
-            return false; //Contradiction: removed last value
-        } else if (values.get(square).length() == 1) { // If there is only one value left in square, remove it from peers
+        if (valuesP.get(square).length() == 0){
+            return null; //Contradiction: removed last value
+        } else if (valuesP.get(square).length() == 1) { // If there is only one value left in square, remove it from peers
             boolean result = true;
             for(int i = 0; i < peers.get(square).size(); i++){
-                result = result && (eliminate(peers.get(square).get(i), values.get(square)) ? true : false);
+                result = result && (eliminate(valuesP, peers.get(square).get(i), valuesP.get(square)) != null ? true : false);
             }
             if(!result){
-                return false;
+                return null;
             }
         }
         // If a unit is reduced to only one place for a value d, then put it there.
@@ -161,24 +165,24 @@ public class Sudoku{
             ArrayList<String> dplaces = new ArrayList<>();
             for (int s = 0; s < units.get(square).get(u).size(); s++) {
                 String square2 = units.get(square).get(u).get(s);
-                if(values.get(square2).indexOf(digit) != -1){
+                if(valuesP.get(square2).indexOf(digit) != -1){
                     dplaces.add(square2);
                 }
             }
 
             if (dplaces.size() == 0){
-                return false; //Contradiction: no place for this value
+                return null; //Contradiction: no place for this value
             } else if (dplaces.size() == 1) {
                 //the digit can only be in one place in unit, assign it there
-                if(!assign(dplaces.get(0), digit)){
-                    return false;
+                if(assign(valuesP, dplaces.get(0), digit) == null){
+                    return null;
                 }
             }
         }
-        return true;
+        return valuesP;
     }
 
-    public String display(){
+    public String display(Dictionary<String, String> valuesP){
         String grid = "";
         for (int i = 0, j = 1, k = 1, l = 1; i < squares.size(); i++, j++, k++) {
             if(l == 4){
@@ -187,19 +191,79 @@ public class Sudoku{
             }
             if(j == 3){
                 if(k == 9){
-                    grid += values.get(squares.get(i)) + "\n";
+                    grid += valuesP.get(squares.get(i)) + "\n";
                     k = 0;
                     l ++;
                 }else{
-                    grid += values.get(squares.get(i)) + " |";
+                    grid += valuesP.get(squares.get(i)) + " |";
                 }
                 j = 0;
             }else{
-                grid += values.get(squares.get(i)) + " ";
+                grid += valuesP.get(squares.get(i)) + " ";
             }
         }
         return grid;
     }
+
+    public String solve(String grid){
+        boolean allIsGood = parseGrid(grid);
+        if(allIsGood){
+            Dictionary<String, String> solution = search(values);
+            return display(solution);
+        }else{
+            return "Error";
+        }
+    }
+
+    private Dictionary<String, String> search(Dictionary<String, String> valuesP){
+        //"Using depth-first search and propagation, try all possible values."
+        /**
+        boolean solved = true;
+        for (int i = 0; i < squares.size(); i++) {
+            if (values.get(squares.get(i)).length() != 1){
+                solved = false;
+            }
+        }
+        if (solved){
+            return true;
+        }**/
+        //Search the square with the minimum number of digits
+        if (valuesP == null){
+            return null;
+        }
+        int min = digits.length()+1;
+        int max = 1;
+        String minSquare = null;
+        for (int i = 0; i < squares.size(); i++) {
+            String tempSquare = squares.get(i);
+            if(valuesP.get(tempSquare).length() > max){
+                max = valuesP.get(tempSquare).length();
+            }
+            if(valuesP.get(tempSquare).length() > 1 && valuesP.get(tempSquare).length() < min){ //Maybe if are different squares with the min value then there are multiple solutions
+                min = valuesP.get(tempSquare).length();
+                minSquare = tempSquare;
+            }
+        }
+        if(max == 1){
+            return valuesP; //Solved
+        }
+        for (int i = 0; i < valuesP.get(minSquare).length(); i++) {
+            Dictionary<String, String> result = search(assign(makeACopyOfValues(valuesP), minSquare, String.valueOf(valuesP.get(minSquare).charAt(i))));
+            if(result != null){
+                return result;
+            }
+        }
+        return null;
+    }
+
+    private Dictionary<String, String> makeACopyOfValues(Dictionary<String, String> valuesP){
+        Dictionary<String, String> valuesCopy = new Hashtable<>();
+        for (int i = 0; i < squares.size(); i++) {
+            valuesCopy.put(squares.get(i), valuesP.get(squares.get(i)));
+        }
+        return valuesCopy;
+    }
+
 
     private boolean isMember (String item, ArrayList<String> list){
         return list.contains(item);
