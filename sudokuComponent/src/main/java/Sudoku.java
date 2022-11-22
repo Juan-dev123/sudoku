@@ -1,6 +1,7 @@
 import java.util.ArrayList;
 import java.util.Dictionary;
 import java.util.Hashtable;
+import java.util.List;
 
 //Adapted from http://norvig.com/sudoku.html and http://pankaj-k.net/sudoku/sudoku.js
 public class Sudoku{
@@ -8,8 +9,8 @@ public class Sudoku{
     private final String digits = "123456789";
     private final String[] rows = {"A", "B", "C", "D", "E", "F", "G", "H", "I"};
     private final String[] cols = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
-    private final ArrayList<String> squares;
-    private final ArrayList<ArrayList<String>> unitlist;
+    private final List<String> squares;
+    private final List<ArrayList<String>> unitList;
     private Dictionary<String, ArrayList<ArrayList<String>>> units;
     private Dictionary<String, ArrayList<String>> peers;
 
@@ -17,7 +18,7 @@ public class Sudoku{
 
     public Sudoku(){
         squares = cross(rows, cols);
-        unitlist = new ArrayList<>();
+        unitList = new ArrayList<>();
         fillUnitlist();
         units = new Hashtable<>();
         fillUnits();
@@ -40,41 +41,31 @@ public class Sudoku{
         //for c in cols
         for (int i = 0; i < cols.length; i++) {
             String[] temp = {cols[i]};
-            unitlist.add(cross(rows, temp));
+            unitList.add(cross(rows, temp));
         }
         for (int i = 0; i < rows.length; i++) {
             String[] temp = {rows[i]};
-            unitlist.add(cross(temp, cols));
+            unitList.add(cross(temp, cols));
         }
         String[][] rrows = {{"A","B","C"}, {"D","E","F"}, {"G","H","I"}};
         String[][] ccols = {{"1", "2", "3"}, {"4","5","6"}, {"7","8","9"}};
 
         for (int i = 0; i < rrows.length; i++) {
             for (int j = 0; j < ccols.length; j++) {
-                unitlist.add(cross(rrows[i], ccols[j]));
+                unitList.add(cross(rrows[i], ccols[j]));
             }
         }
-
-        /**
-        String[][] rs = {{"ABC"}, {"DEF"}, {"GHI"}};
-        String[][] cs = {{"123"}, {"456"}, {"789"}};
-
-        for (int i = 0; i < rs.length; i++) {
-            for (int j = 0; j < cs.length; j++) {
-                unitlist.add(cross(rs[i], cs[j]));
-            }
-        }**/
     }
 
     private void fillUnits(){
         //for s in sqaures
         for (int i = 0; i < squares.size(); i++) {
-            String s = squares.get(i);
-            units.put(s, new ArrayList<>());
-            //u for u in unitlist QUITARRR
-            for (int j = 0; j < unitlist.size(); j++) {
-                if(isMember(s, unitlist.get(j))){
-                    units.get(s).add(unitlist.get(j));
+            String square = squares.get(i);
+            units.put(square, new ArrayList<>());
+            //u for u in unitList QUITARRR
+            for (int j = 0; j < unitList.size(); j++) {
+                if(isMember(square, unitList.get(j))){
+                    units.get(square).add(unitList.get(j));
                 }
             }
         }
@@ -83,17 +74,17 @@ public class Sudoku{
     private void fillPeers(){
         //for s in squares QUITARR
         for (int i = 0; i < squares.size(); i++) {
-            String s = squares.get(i);
+            String square = squares.get(i);
             ArrayList<String> tempPeers = new ArrayList<>();
-            for (int j = 0; j < units.get(s).size(); j++) {
-                for (int k = 0; k < units.get(s).get(j).size(); k++) {
-                    String tempMiniSquare = units.get(s).get(j).get(k);
-                    if(!isMember(tempMiniSquare, tempPeers) && !tempMiniSquare.equals(s)){
+            for (int j = 0; j < units.get(square).size(); j++) {
+                for (int k = 0; k < units.get(square).get(j).size(); k++) {
+                    String tempMiniSquare = units.get(square).get(j).get(k);
+                    if(!isMember(tempMiniSquare, tempPeers) && !tempMiniSquare.equals(square)){
                         tempPeers.add(tempMiniSquare);
                     }
                 }
             }
-            peers.put(s, tempPeers);
+            peers.put(square, tempPeers);
         }
     }
 
@@ -162,19 +153,19 @@ public class Sudoku{
         }
         // If a unit is reduced to only one place for a value d, then put it there.
         for (int u = 0; u < units.get(square).size(); u++) {
-            ArrayList<String> dplaces = new ArrayList<>();
+            ArrayList<String> dPlaces = new ArrayList<>();
             for (int s = 0; s < units.get(square).get(u).size(); s++) {
                 String square2 = units.get(square).get(u).get(s);
                 if(valuesP.get(square2).indexOf(digit) != -1){
-                    dplaces.add(square2);
+                    dPlaces.add(square2);
                 }
             }
 
-            if (dplaces.size() == 0){
+            if (dPlaces.size() == 0){
                 return null; //Contradiction: no place for this value
-            } else if (dplaces.size() == 1) {
+            } else if (dPlaces.size() == 1) {
                 //the digit can only be in one place in unit, assign it there
-                if(assign(valuesP, dplaces.get(0), digit) == null){
+                if(assign(valuesP, dPlaces.get(0), digit) == null){
                     return null;
                 }
             }
