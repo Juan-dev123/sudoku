@@ -21,6 +21,8 @@ public class Sudoku{
 
     private Dictionary<String, String> values;
 
+    private Queue<Runnable> tasks;
+
     private Queue<Dictionary<String, String>> solutionsDic;
 
     private Queue<String> solutionsStr;
@@ -28,6 +30,8 @@ public class Sudoku{
     private ArrayList<String> solutions;
 
     private ThreadPoolExecutor pool;
+
+    private boolean runningTasks;
 
     public Sudoku(){
         squares = cross(rows, cols);
@@ -42,6 +46,8 @@ public class Sudoku{
         solutionsStr = new LinkedList<>();
         solutions = new ArrayList<>();
         pool = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_THREADS);
+        tasks = new LinkedList<>();
+        runningTasks = true;
     }
 
     private ArrayList<String> cross(String[] rowsP, String[] colsP){
@@ -230,14 +236,19 @@ public class Sudoku{
                 if(tempDigits.length() > 1){
                     for (int j = 0; j < tempDigits.length(); j++) {
                         Runnable task = new TaskDigit(values, tempDigits.charAt(j), tempSquare, this);
-                        pool.execute(task);
-                        System.out.println("Executing task "+(i+1));
+                        tasks.add(task);
+                        //pool.execute(task);
+                        //System.out.println("Executing task "+(i+1));
                     }
                 }
             }
+            QueueAdministrator qAdmin = new QueueAdministrator(this);
+            Thread thread = new Thread(qAdmin);
+            thread.start();
         }
-        waitPossibleSolutions();
-        waitSolutions();
+        //waitPossibleSolutions();
+        //waitSolutions();
+        waitTasks();
         pool.shutdown();
         return solutionsDic;
     }
@@ -320,7 +331,8 @@ public class Sudoku{
     }
 
     public void addTaskToPool(Runnable task) {
-        pool.execute(task);
+        tasks.add(task);
+        //pool.execute(task);
     }
 
     private void waitPossibleSolutions(){
@@ -341,6 +353,12 @@ public class Sudoku{
         }
     }
 
+    private void waitTasks(){
+        while (runningTasks){
+            Thread.yield();
+        }
+    }
+
     public Queue<String> getSolutionsStr() {
         return solutionsStr;
     }
@@ -351,5 +369,13 @@ public class Sudoku{
 
     public ThreadPoolExecutor getPool() {
         return pool;
+    }
+
+    public Queue<Runnable> getTasks() {
+        return tasks;
+    }
+
+    public void setRunningTasks(boolean runningTasks) {
+        this.runningTasks = runningTasks;
     }
 }
