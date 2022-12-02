@@ -1,14 +1,14 @@
-import com.zeroc.IceInternal.ThreadPool;
-
+import java.io.*;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 //Adapted from http://norvig.com/sudoku.html and http://pankaj-k.net/sudoku/sudoku.js
 public class Sudoku{
 
-    static final int MAX_THREADS = 12;
+    static final int MAX_THREADS = 9;
 
     static final int MAX_QUEUE_SIZE = 100;
     private final String digits = "123456789";
@@ -23,7 +23,11 @@ public class Sudoku{
 
     private Queue<Runnable> tasks;
 
+    private Semaphore semaphoreTasks;
+
     private Queue<Dictionary<String, String>> solutionsDic;
+
+    private Semaphore solutionDicSemaphore;
 
     private Queue<String> solutionsStr;
 
@@ -32,6 +36,12 @@ public class Sudoku{
     private ThreadPoolExecutor pool;
 
     private boolean runningTasks;
+
+    private String outputMessage;
+
+    //private Semaphore semaphoreMessage;
+
+    private Semaphore poolSemaphore;
 
     public Sudoku(){
         squares = cross(rows, cols);
@@ -48,6 +58,11 @@ public class Sudoku{
         pool = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_THREADS);
         tasks = new LinkedList<>();
         runningTasks = true;
+        semaphoreTasks = new Semaphore(1);
+        outputMessage = "";
+//        semaphoreMessage = new Semaphore(1);
+        poolSemaphore = new Semaphore(1);
+        solutionDicSemaphore = new Semaphore(1);
     }
 
     private ArrayList<String> cross(String[] rowsP, String[] colsP){
@@ -227,30 +242,49 @@ public class Sudoku{
         }
     }
 
-    public Queue<Dictionary<String, String>> tempSolve(String grid){
+    public void tempSolve(String grid){
         boolean allIsGood = parseGrid(grid);
         if(allIsGood) {
-            for (int i = 0; i < squares.size(); i++) {
-                String tempSquare = squares.get(i);
-                String tempDigits = values.get(tempSquare);
-                if(tempDigits.length() > 1){
-                    for (int j = 0; j < tempDigits.length(); j++) {
-                        Runnable task = new TaskDigit(values, tempDigits.charAt(j), tempSquare, this);
-                        tasks.add(task);
-                        //pool.execute(task);
-                        //System.out.println("Executing task "+(i+1));
+            try {
+                //semaphoreTasks.acquire();
+                poolSemaphore.acquire();
+                for (int i = 0; i < squares.size(); i++) {
+                    String tempSquare = squares.get(i);
+                    String tempDigits = values.get(tempSquare);
+                    if(tempDigits.length() > 1){
+                        for (int j = 0; j < tempDigits.length(); j++) {
+
+                            Runnable task = new TaskDigit(values, tempDigits.charAt(j), tempSquare, this);
+//                            tasks.add(task);
+
+                            pool.execute(task);
+                            //System.out.println("Executing task "+(i+1));
+                        }
                     }
                 }
+                if(tasks.size() == 0){
+                    //Then all the squares only have one digit
+                    solutions.add(grid);
+                }
+                poolSemaphore.release();
+                //semaphoreTasks.release();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
             }
-            QueueAdministrator qAdmin = new QueueAdministrator(this);
+/*            QueueAdministrator qAdmin = new QueueAdministrator(this);
             Thread thread = new Thread(qAdmin);
-            thread.start();
+            thread.start();*/
         }
-        //waitPossibleSolutions();
+//        waitTasks();
+//        waitPossibleSolutions();
         //waitSolutions();
-        waitTasks();
-        pool.shutdown();
-        return solutionsDic;
+        try {
+            pool.shutdown();
+            pool.awaitTermination(60, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+//        generateFile();
     }
 
     public Dictionary<String, String> search(Dictionary<String, String> valuesP){
@@ -310,6 +344,44 @@ public class Sudoku{
         return list.contains(item);
     }
 
+    private void generateText(){
+        waitSolutions();
+        pool = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_THREADS);
+        try {
+            semaphoreTasks.acquire();
+            int numSolutions = solutions.size();
+            if(numSolutions == 0){
+                outputMessage += "There is no solution for this sudoku\n";
+            }else{
+                if(numSolutions == 1){
+                    outputMessage += "There is 1 solution for this sudoku\n";
+                }else{
+                    outputMessage += "There are " + numSolutions + " solutions for this sudoku\n";
+                }
+                for (int i = 0; i < solutions.size(); i++) {
+                    Runnable task = new TaskGrid(this, solutions.get(i));
+                    tasks.add(task);
+                }
+            }
+            runningTasks = true;
+            semaphoreTasks.release();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
+        QueueAdministrator qAdmin = new QueueAdministrator(this);
+        Thread thread = new Thread(qAdmin);
+        thread.start();
+        waitTasks();
+        waitSolutions();
+        pool.shutdown();
+    }
+
+    private void generateFile(){
+        generateText();
+        System.out.println(outputMessage);
+    }
+
     public Dictionary<String, ArrayList<ArrayList<String>>> getUnits() {
         return units;
     }
@@ -331,9 +403,18 @@ public class Sudoku{
     }
 
     public void addTaskToPool(Runnable task) {
-        tasks.add(task);
-        //pool.execute(task);
+        pool.execute(task);
     }
+
+/*    public void addGrid(String grid){
+        try {
+            semaphoreMessage.acquire();
+            outputMessage += grid+"\n";
+            semaphoreMessage.release();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }*/
 
     private void waitPossibleSolutions(){
         while (solutionsDic.size() > 0){
@@ -345,12 +426,19 @@ public class Sudoku{
     }
 
     private void waitSolutions(){
-        while (solutionsStr.size() > 0){
+        while (pool.getQueue().size() > 0){
             Thread.yield();
-            System.out.println("waiting solutions");
-            System.out.println(solutionsStr.size());
-            System.out.println(pool.getQueue().size());
         }
+/*        try {
+            poolSemaphore.acquire();
+            while (pool.getQueue().size() > 0){
+                Thread.yield();
+                poolSemaphore.release();
+            }
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }*/
+
     }
 
     private void waitTasks(){
@@ -377,5 +465,17 @@ public class Sudoku{
 
     public void setRunningTasks(boolean runningTasks) {
         this.runningTasks = runningTasks;
+    }
+
+    public Semaphore getSemaphoreTasks() {
+        return semaphoreTasks;
+    }
+
+    public Semaphore getPoolSemaphore() {
+        return poolSemaphore;
+    }
+
+    public Semaphore getSolutionDicSemaphore() {
+        return solutionDicSemaphore;
     }
 }

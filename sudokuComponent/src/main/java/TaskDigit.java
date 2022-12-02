@@ -22,9 +22,17 @@ public class TaskDigit implements Runnable{
         System.out.println("Queue: "+sudoku.getPool().getQueue().size());
         Dictionary<String, String> solution = searchWithDigit(values, digit);
         if(solution != null){
-            sudoku.addPossibleSolution(solution);
-            Runnable task = new TaskDictionary(sudoku);
-            sudoku.addTaskToPool(task);
+            try {
+                sudoku.getSolutionDicSemaphore().acquire();
+                sudoku.addPossibleSolution(solution);
+                sudoku.getSolutionDicSemaphore().release();
+
+                Runnable task = new TaskDictionary(sudoku);
+                sudoku.addTaskToPool(task);
+
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
         }
         System.out.println("Task finished");
     }

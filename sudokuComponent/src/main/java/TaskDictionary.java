@@ -14,13 +14,21 @@ public class TaskDictionary implements Runnable {
     public void run() {
         System.out.println("Queue: "+sudoku.getPool().getQueue().size());
         System.out.println("TaskDictionary running");
-        Dictionary<String, String> possibleSolution = sudoku.getSolutionsDic().poll();
-        if(possibleSolution != null){
-            sudoku.addPossibleSolution(dictionaryToString(possibleSolution, sudoku.getSquares()));
-            Runnable task = new TaskString(sudoku);
-            sudoku.addTaskToPool(task);
+        try {
+            
+            sudoku.getSolutionDicSemaphore().acquire();
+            Dictionary<String, String> possibleSolution = sudoku.getSolutionsDic().poll();
+            sudoku.getSolutionDicSemaphore().release();
+
+            if(possibleSolution != null){
+                sudoku.addPossibleSolution(dictionaryToString(possibleSolution, sudoku.getSquares()));
+                //Runnable task = new TaskString(sudoku);
+                //sudoku.addTaskToPool(task);
+            }
+            System.out.println("TaskDictionary finished");
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
-        System.out.println("TaskDictionary finished");
     }
 
     private String dictionaryToString(Dictionary<String, String> solution, List<String> squares){
