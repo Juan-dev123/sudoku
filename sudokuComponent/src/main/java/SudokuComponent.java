@@ -6,8 +6,8 @@ import java.io.IOException;
 public class SudokuComponent {
 
     public static void main(String[] args){
-        String[][] sudokuArray = readSudoku("generator/src/main/resources/inputSudoku.txt");
-        //String[][] sudokuArray = readSudoku("sudokuComponent/src/main/resources/test1.txt");
+        //String[][] sudokuArray = readSudoku("generator/src/main/resources/inputSudoku.txt");
+        String[][] sudokuArray = readSudoku("sudokuComponent/src/main/resources/test1.txt");
         //String[][] sudokuArray = readSudoku("sudokuComponent/src/main/resources/test2.txt");
         //String[][] sudokuArray = readSudoku("sudokuComponent/src/main/resources/test3.txt");
         Sudoku sudoku = new Sudoku();

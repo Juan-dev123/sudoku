@@ -12,6 +12,7 @@ public class Sudoku{
     static final int MAX_THREADS = 12;
 
     static final int MAX_QUEUE_SIZE = 100;
+
     private final String digits = "123456789";
     private final String[] rows = {"A", "B", "C", "D", "E", "F", "G", "H", "I"};
     private final String[] cols = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
@@ -26,7 +27,8 @@ public class Sudoku{
 
     private Queue<String> solutionsStr;
 
-    private ArrayList<String> solutions;
+
+    private Set<String> setOfSolutions;
 
     private ThreadPoolExecutor pool;
 
@@ -53,13 +55,13 @@ public class Sudoku{
         values = new Hashtable<>();
         solutionsDic = new LinkedList<>();
         solutionsStr = new LinkedList<>();
-        solutions = new ArrayList<>();
         pool = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_THREADS);
         poolSemaphore = new Semaphore(1);
         solDicSemaphore = new Semaphore(1);
         solStrSemaphore = new Semaphore(1);
         messageSemaphore = new Semaphore(1);
         outputMessage = "";
+        setOfSolutions = new HashSet<String>();
     }
 
     private ArrayList<String> cross(String[] rowsP, String[] colsP){
@@ -73,7 +75,6 @@ public class Sudoku{
     }
 
     private void fillUnitList(){
-        //for c in cols
         for (int i = 0; i < cols.length; i++) {
             String[] temp = {cols[i]};
             unitList.add(cross(rows, temp));
@@ -213,10 +214,17 @@ public class Sudoku{
             parseSolutionToString();
             checkUniqueSolution();
         }
-        makeGrids();
-        createFile();
+        try {
+            PrintWriter printWriter = new PrintWriter(PATH);
+            makeGrids(printWriter);
+            printWriter.close();
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+
     }
     private void findAllSolutions(){
+        System.out.println("Finding all solutions");
         int tasks = 0;
         try {
             poolSemaphore.acquire();
@@ -259,6 +267,7 @@ public class Sudoku{
     }
     
     private void parseSolutionToString(){
+        System.out.println("Parse Solution to String...");
         int tasks = 0;
         try {
             poolSemaphore.acquire();
@@ -278,32 +287,29 @@ public class Sudoku{
     }
 
     private void checkUniqueSolution(){
-        //It would be faster if fork join is used
-        int originalSize = solutionsStr.size();
-        for (int i = 0; i < originalSize; i++) {
-            String possibleSolution = solutionsStr.poll();
-            if(!solutions.contains(possibleSolution)){
-                solutions.add(possibleSolution);
-            }
-        }
+        System.out.println("Checking unique solutions...");
+        setOfSolutions.addAll(solutionsStr);
     }
 
-    private void makeGrids(){
+    private void makeGrids(PrintWriter printWriter){
+        System.out.println("Making grids...");
         int tasks = 0;
         try {
             poolSemaphore.acquire();
             pool = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_THREADS);
-            int numSolutions = solutions.size();
+            int numSolutions = setOfSolutions.size();
             if(numSolutions == 0){
-                outputMessage += "There is no solution for this sudoku\n";
+                outputMessage = "There is no solution for this sudoku\n";
+                writeText(printWriter,outputMessage);
             }else{
                 if(numSolutions == 1){
-                    outputMessage += "There is 1 solution for this sudoku\n";
+                    outputMessage = "There is 1 solution for this sudoku\n";
                 }else{
-                    outputMessage += "There are " + numSolutions + " solutions for this sudoku\n";
+                    outputMessage = "There are " + numSolutions + " solutions for this sudoku\n";
                 }
-                for (int i = 0; i < solutions.size(); i++) {
-                    Runnable task = new TaskGrid(this, solutions.get(i));
+                writeText(printWriter,outputMessage);
+                for(String grid : setOfSolutions){
+                    Runnable task = new TaskGrid(this, grid, printWriter);
                     tasks++;
                     pool.execute(task);
                 }
@@ -316,20 +322,14 @@ public class Sudoku{
         waitForPool(tasks);
     }
 
-    private void createFile(){
-        try {
-            PrintWriter printWriter = new PrintWriter(Sudoku.PATH);
-            printWriter.write(outputMessage);
-            printWriter.close();
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
-        }
+    private void writeText(PrintWriter printWriter, String text){
+        printWriter.write(text);
     }
 
-    public void addGrid(String grid){
+    public void addGrid(String grid, PrintWriter printWriter){
         try {
             messageSemaphore.acquire();
-            outputMessage += grid+"\n";
+            writeText(printWriter, grid+"\n");
             messageSemaphore.release();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
@@ -361,11 +361,13 @@ public class Sudoku{
             solutions.add(valuesP);
             return solutions; //Solved
         }
+
         for (int i = 0; i < valuesP.get(minSquare).length(); i++) {
-            ArrayList<Dictionary<String, String>> result = search(assign(makeACopyOfValues(valuesP), minSquare, String.valueOf(valuesP.get(minSquare).charAt(i))), solutions);
-            if(result != null){
-                return result;
-            }
+            int size = valuesP.get(minSquare).length();
+                search(assign(makeACopyOfValues(valuesP), minSquare, String.valueOf(valuesP.get(minSquare).charAt(i))), solutions);
+        }
+        if(solutions.size() > 1){
+            return solutions;
         }
         return null; //Simulates a false
     }
@@ -384,10 +386,6 @@ public class Sudoku{
 
     public void addPossibleSolution(String solution){
         solutionsStr.add(solution);
-    }
-
-    public void addSolution(String solution){
-        solutions.add(solution);
     }
 
     private boolean isMember (String item, ArrayList<String> list){
@@ -416,10 +414,6 @@ public class Sudoku{
 
     public Queue<String> getSolutionsStr() {
         return solutionsStr;
-    }
-
-    public ArrayList<String> getSolutions() {
-        return solutions;
     }
 
     public ThreadPoolExecutor getPool() {

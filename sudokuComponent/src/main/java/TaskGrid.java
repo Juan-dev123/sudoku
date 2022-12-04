@@ -1,18 +1,23 @@
+import java.io.PrintWriter;
+
 public class TaskGrid implements Runnable {
 
     private Sudoku sudoku;
 
     private String text;
 
-    public TaskGrid(Sudoku sudokuP, String textP){
+    private PrintWriter printWriter;
+
+    public TaskGrid(Sudoku sudokuP, String textP, PrintWriter printWriterP){
         sudoku = sudokuP;
         text = textP;
+        printWriter = printWriterP;
     }
 
     @Override
     public void run() {
-        String grid = convertStringToGrid(text);
-        sudoku.addGrid(grid);
+//        String grid = convertStringToGrid(text);
+        sudoku.addGrid(text, printWriter);
     }
 
     private String convertStringToGrid(String representationOfGrid){
