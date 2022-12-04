@@ -38,18 +38,16 @@ public class Generator {
     }
 
     private static void writeToTextFile(String[][] grid) throws FileNotFoundException {
-        //PrintWriter printWriter = new PrintWriter("resources/inputSudoku.txt");
+        PrintWriter printWriter = new PrintWriter("generator/src/main/resources/inputSudoku.txt");
         for (String[] square : grid) {
             for (int j = 0; j < square.length; j++) {
                 if (j != 8)
-                    System.out.print(square[j] + DELIMITER);
-                    //printWriter.write(strings[j] + DELIMITER);
+                    printWriter.write(square[j] + DELIMITER);
                 else
-                    System.out.print(square[j]);
-                //printWriter.write(strings[j]);
+                    printWriter.write(square[j]);
             }
-            System.out.println();
-            //printWriter.write("\n");
+            printWriter.write("\n");
         }
+        printWriter.close();
     }
 }
