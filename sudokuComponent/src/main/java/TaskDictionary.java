@@ -22,8 +22,6 @@ public class TaskDictionary implements Runnable {
                 sudoku.getSolStrSemaphore().acquire();
                 sudoku.addPossibleSolution(dictionaryToString(possibleSolution, sudoku.getSquares()));
                 sudoku.getSolStrSemaphore().release();
-//              Runnable task = new TaskString(sudoku);
-//              sudoku.addTaskToPool(task);
             }
             System.out.println("TaskDictionary finished");
         } catch (InterruptedException e) {

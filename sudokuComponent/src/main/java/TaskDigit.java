@@ -26,8 +26,6 @@ public class TaskDigit implements Runnable{
                 sudoku.getSolDicSemaphore().acquire();
                 sudoku.addPossibleSolution(solution);
                 sudoku.getSolDicSemaphore().release();
-//            Runnable task = new TaskDictionary(sudoku);
-//            sudoku.addTaskToPool(task);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }

@@ -1,11 +1,14 @@
 import com.zeroc.IceInternal.ThreadPool;
 
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
 import java.util.*;
 import java.util.concurrent.*;
 
 //Adapted from http://norvig.com/sudoku.html and http://pankaj-k.net/sudoku/sudoku.js
 public class Sudoku{
 
+    public static final String PATH = "sudokuComponent/src/main/resources/solutions.txt";
     static final int MAX_THREADS = 12;
 
     static final int MAX_QUEUE_SIZE = 100;
@@ -117,21 +120,22 @@ public class Sudoku{
         }
     }
 
-    public boolean parseGrid(String grid){
-        String grid2 = "";
-        for (int i = 0; i < grid.length(); i++) {
-            if("0.,-123456789".indexOf(grid.charAt(i)) >= 0){
-                grid2 += grid.charAt(i);
-            }
-        }
+
+    public boolean parseGrid(String[][] grid){
+
         for (int i = 0; i < squares.size(); i++) {
             //To start, every square can be any digit; then assign values from the grid.
             values.put(squares.get(i), digits);
         }
-        for (int i = 0; i < squares.size(); i++) {
-            //If the value in the square is between 1 and 9 and the value can''t be assigned then return false
-            if(digits.indexOf(grid2.charAt(i)) >= 0 && assign(values, squares.get(i), String.valueOf(grid2.charAt(i))) == null){
-                return false; //Fail if we can't assign the digit to the square.
+
+        for (int i = 0, k = 0; i < grid.length; i++) {
+            for (int j = 0; j < grid[i].length; j++, k++) {
+                String value = grid[i][j];
+                //If the value in the square is between 1 and 9 and the value can''t be assigned then return false
+                if(digits.indexOf(value) >= 0 && assign(values, squares.get(k), value) == null){
+                    return false; //Fail if we can't assign the digit to the square.
+                }
+                System.out.println(k);
             }
         }
         return true;
@@ -203,90 +207,68 @@ public class Sudoku{
         return valuesP;
     }
 
-    public String display(Dictionary<String, String> valuesP){
-        String grid = "";
-        for (int i = 0, j = 1, k = 1, l = 1; i < squares.size(); i++, j++, k++) {
-            if(l == 4){
-                grid += "------+------+------\n";
-                l = 1;
-            }
-            if(j == 3){
-                if(k == 9){
-                    grid += valuesP.get(squares.get(i)) + "\n";
-                    k = 0;
-                    l ++;
-                }else{
-                    grid += valuesP.get(squares.get(i)) + " |";
-                }
-                j = 0;
-            }else{
-                grid += valuesP.get(squares.get(i)) + " ";
-            }
-        }
-        return grid;
-    }
-
-    public String solve(String grid){
-        boolean allIsGood = parseGrid(grid);
-        if(allIsGood){
-            Dictionary<String, String> solution = search(values);
-            return display(solution);
-        }else{
-            return "Error";
-        }
-    }
-
-    public void tempSolve(String grid){
+    public void solve(String[][] grid){
         boolean allIsGood = parseGrid(grid);
         if(allIsGood) {
             findAllSolutions();
             parseSolutionToString();
             checkUniqueSolution();
-            makeGrids();
         }
-
+        makeGrids();
+        createFile();
     }
     private void findAllSolutions(){
+        int tasks = 0;
         try {
             poolSemaphore.acquire();
+            boolean allSquaresHaveOneValue = true;
             for (int i = 0; i < squares.size(); i++) {
                 String tempSquare = squares.get(i);
                 String tempDigits = values.get(tempSquare);
                 if(tempDigits.length() > 1){
+                    allSquaresHaveOneValue = false;
                     for (int j = 0; j < tempDigits.length(); j++) {
                         Runnable task = new TaskDigit(values, tempDigits.charAt(j), tempSquare, this);
+                        tasks++;
                         pool.execute(task);
                     }
                 }
+            }
+            if (allSquaresHaveOneValue){
+                solDicSemaphore.acquire();
+                solutionsDic.add(values);
+                solDicSemaphore.release();
             }
             poolSemaphore.release();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
         pool.shutdown();
-        waitForPool();
+        waitForPool(tasks);
         System.out.println("jeje");
     }
 
-    private void waitForPool(){
+    private void waitForPool(int task){
         try {
             poolSemaphore.acquire();
-            while (pool.getQueue().size() > 0 || pool.getActiveCount() > 0){
-                poolSemaphore.release();
+            while (pool.getQueue().size() > 0 || pool.getActiveCount() > 0 || pool.getCompletedTaskCount() < task){
                 Thread.yield();
             }
+            poolSemaphore.release();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
     }
     
     private void parseSolutionToString(){
+        int tasks = 0;
         try {
             poolSemaphore.acquire();
             pool = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_THREADS);
             int initialSize = solutionsDic.size();
             for (int i = 0; i < initialSize; i++) {
                 Runnable task = new TaskDictionary(this);
+                tasks++;
                 pool.execute(task);
             }
             poolSemaphore.release();
@@ -294,7 +276,7 @@ public class Sudoku{
             throw new RuntimeException(e);
         }
         pool.shutdown();
-        waitForPool();
+        waitForPool(tasks);
         System.out.println("jeje");
     }
 
@@ -311,6 +293,7 @@ public class Sudoku{
     }
 
     private void makeGrids(){
+        int tasks = 0;
         try {
             poolSemaphore.acquire();
             pool = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_THREADS);
@@ -325,6 +308,7 @@ public class Sudoku{
                 }
                 for (int i = 0; i < solutions.size(); i++) {
                     Runnable task = new TaskGrid(this, solutions.get(i));
+                    tasks++;
                     pool.execute(task);
                 }
             }
@@ -333,8 +317,18 @@ public class Sudoku{
             throw new RuntimeException(e);
         }
         pool.shutdown();
-        waitForPool();
+        waitForPool(tasks);
         System.out.println("jeje");
+    }
+
+    private void createFile(){
+        try {
+            PrintWriter printWriter = new PrintWriter(Sudoku.PATH);
+            printWriter.write(outputMessage);
+            printWriter.close();
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public void addGrid(String grid){

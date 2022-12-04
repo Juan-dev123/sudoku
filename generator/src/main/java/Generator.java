@@ -8,6 +8,8 @@ public class Generator {
     private static final int TOTAL_CELLS = 81;
     private static final int ROWS_COLUMNS = 9;
 
+    public static final String PATH = "generator/src/main/resources/inputSudoku.txt";
+
     public static void main(String[] args) throws FileNotFoundException {
         //Integer.parseInt(args[0])
         String[][] inputGrid = generate(TOTAL_CELLS - 18);
@@ -38,7 +40,7 @@ public class Generator {
     }
 
     private static void writeToTextFile(String[][] grid) throws FileNotFoundException {
-        PrintWriter printWriter = new PrintWriter("generator/src/main/resources/inputSudoku.txt");
+        PrintWriter printWriter = new PrintWriter(Generator.PATH);
         for (String[] square : grid) {
             for (int j = 0; j < square.length; j++) {
                 if (j != 8)
