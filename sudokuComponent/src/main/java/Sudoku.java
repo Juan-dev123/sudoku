@@ -135,7 +135,6 @@ public class Sudoku{
                 if(digits.indexOf(value) >= 0 && assign(values, squares.get(k), value) == null){
                     return false; //Fail if we can't assign the digit to the square.
                 }
-                System.out.println(k);
             }
         }
         return true;
@@ -245,7 +244,6 @@ public class Sudoku{
         }
         pool.shutdown();
         waitForPool(tasks);
-        System.out.println("jeje");
     }
 
     private void waitForPool(int task){
@@ -277,7 +275,6 @@ public class Sudoku{
         }
         pool.shutdown();
         waitForPool(tasks);
-        System.out.println("jeje");
     }
 
     private void checkUniqueSolution(){
@@ -289,7 +286,6 @@ public class Sudoku{
                 solutions.add(possibleSolution);
             }
         }
-        System.out.println("jeje");
     }
 
     private void makeGrids(){
@@ -318,7 +314,6 @@ public class Sudoku{
         }
         pool.shutdown();
         waitForPool(tasks);
-        System.out.println("jeje");
     }
 
     private void createFile(){
@@ -341,7 +336,7 @@ public class Sudoku{
         }
     }
 
-    public Dictionary<String, String> search(Dictionary<String, String> valuesP){
+    public ArrayList<Dictionary<String, String>> search(Dictionary<String, String> valuesP, ArrayList<Dictionary<String, String>> solutions){
         //"Using depth-first search and propagation, try all possible values."
 
         //Search the square with the minimum number of digits
@@ -363,10 +358,11 @@ public class Sudoku{
         }
         //If all the squares only have one digit
         if(max == 1){
-            return valuesP; //Solved
+            solutions.add(valuesP);
+            return solutions; //Solved
         }
         for (int i = 0; i < valuesP.get(minSquare).length(); i++) {
-            Dictionary<String, String> result = search(assign(makeACopyOfValues(valuesP), minSquare, String.valueOf(valuesP.get(minSquare).charAt(i))));
+            ArrayList<Dictionary<String, String>> result = search(assign(makeACopyOfValues(valuesP), minSquare, String.valueOf(valuesP.get(minSquare).charAt(i))), solutions);
             if(result != null){
                 return result;
             }
@@ -416,28 +412,6 @@ public class Sudoku{
 
     public List<String> getSquares() {
         return squares;
-    }
-
-    public void addTaskToPool(Runnable task) {
-        pool.execute(task);
-    }
-
-    private void waitPossibleSolutions(){
-        while (solutionsDic.size() > 0){
-            Thread.yield();
-            System.out.println("waiting possible solutions");
-            System.out.println(solutionsDic.size());
-            System.out.println(pool.getQueue().size());
-        }
-    }
-
-    private void waitSolutions(){
-        while (solutionsStr.size() > 0){
-            Thread.yield();
-            System.out.println("waiting solutions");
-            System.out.println(solutionsStr.size());
-            System.out.println(pool.getQueue().size());
-        }
     }
 
     public Queue<String> getSolutionsStr() {

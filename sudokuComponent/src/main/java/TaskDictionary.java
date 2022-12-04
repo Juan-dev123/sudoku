@@ -12,8 +12,6 @@ public class TaskDictionary implements Runnable {
 
     @Override
     public void run() {
-        System.out.println("Queue: "+sudoku.getPool().getQueue().size());
-        System.out.println("TaskDictionary running");
         try {
             sudoku.getSolDicSemaphore().acquire();
             Dictionary<String, String> possibleSolution = sudoku.getSolutionsDic().poll();
@@ -23,7 +21,6 @@ public class TaskDictionary implements Runnable {
                 sudoku.addPossibleSolution(dictionaryToString(possibleSolution, sudoku.getSquares()));
                 sudoku.getSolStrSemaphore().release();
             }
-            System.out.println("TaskDictionary finished");
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }

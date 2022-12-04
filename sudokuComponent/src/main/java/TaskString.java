@@ -10,8 +10,6 @@ public class TaskString implements Runnable {
 
     @Override
     public void run() {
-        System.out.println("Queue: "+sudoku.getPool().getQueue().size());
-        System.out.println("TaskString running");
         String possibleSolution = sudoku.getSolutionsStr().poll();
         if(possibleSolution != null){
             //If the solution has not been added before
@@ -19,6 +17,5 @@ public class TaskString implements Runnable {
                 sudoku.addSolution(possibleSolution);
             }
         }
-        System.out.println("TaskString finished");
     }
 }
