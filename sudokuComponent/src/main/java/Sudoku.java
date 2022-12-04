@@ -1,11 +1,17 @@
-import java.util.ArrayList;
-import java.util.Dictionary;
-import java.util.Hashtable;
-import java.util.List;
+import com.zeroc.IceInternal.ThreadPool;
+
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
+import java.util.*;
+import java.util.concurrent.*;
 
 //Adapted from http://norvig.com/sudoku.html and http://pankaj-k.net/sudoku/sudoku.js
 public class Sudoku{
 
+    public static final String PATH = "sudokuComponent/src/main/resources/solutions.txt";
+    static final int MAX_THREADS = 12;
+
+    static final int MAX_QUEUE_SIZE = 100;
     private final String digits = "123456789";
     private final String[] rows = {"A", "B", "C", "D", "E", "F", "G", "H", "I"};
     private final String[] cols = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
@@ -16,15 +22,44 @@ public class Sudoku{
 
     private Dictionary<String, String> values;
 
+    private Queue<Dictionary<String, String>> solutionsDic;
+
+    private Queue<String> solutionsStr;
+
+    private ArrayList<String> solutions;
+
+    private ThreadPoolExecutor pool;
+
+    private Semaphore poolSemaphore;
+
+    private Semaphore solDicSemaphore;
+
+    private Semaphore solStrSemaphore;
+
+    private String outputMessage;
+
+    private Semaphore messageSemaphore;
+
+
+
     public Sudoku(){
         squares = cross(rows, cols);
         unitList = new ArrayList<>();
-        fillUnitlist();
+        fillUnitList();
         units = new Hashtable<>();
         fillUnits();
         peers = new Hashtable<>();
         fillPeers();
         values = new Hashtable<>();
+        solutionsDic = new LinkedList<>();
+        solutionsStr = new LinkedList<>();
+        solutions = new ArrayList<>();
+        pool = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_THREADS);
+        poolSemaphore = new Semaphore(1);
+        solDicSemaphore = new Semaphore(1);
+        solStrSemaphore = new Semaphore(1);
+        messageSemaphore = new Semaphore(1);
+        outputMessage = "";
     }
 
     private ArrayList<String> cross(String[] rowsP, String[] colsP){
@@ -37,7 +72,7 @@ public class Sudoku{
         return longRow;
     }
 
-    private void fillUnitlist(){
+    private void fillUnitList(){
         //for c in cols
         for (int i = 0; i < cols.length; i++) {
             String[] temp = {cols[i]};
@@ -58,11 +93,9 @@ public class Sudoku{
     }
 
     private void fillUnits(){
-        //for s in sqaures
         for (int i = 0; i < squares.size(); i++) {
             String square = squares.get(i);
             units.put(square, new ArrayList<>());
-            //u for u in unitList QUITARRR
             for (int j = 0; j < unitList.size(); j++) {
                 if(isMember(square, unitList.get(j))){
                     units.get(square).add(unitList.get(j));
@@ -72,7 +105,6 @@ public class Sudoku{
     }
 
     private void fillPeers(){
-        //for s in squares QUITARR
         for (int i = 0; i < squares.size(); i++) {
             String square = squares.get(i);
             ArrayList<String> tempPeers = new ArrayList<>();
@@ -88,22 +120,21 @@ public class Sudoku{
         }
     }
 
-    public boolean parseGrid(String grid){
-        String grid2 = "";
-        for (int i = 0; i < grid.length(); i++) {
-            if("0.,-123456789".indexOf(grid.charAt(i)) >= 0){
-                grid2 += grid.charAt(i);
-            }
-        }
-        //for var s in squares QUITARRR
+
+    public boolean parseGrid(String[][] grid){
+
         for (int i = 0; i < squares.size(); i++) {
             //To start, every square can be any digit; then assign values from the grid.
             values.put(squares.get(i), digits);
         }
-        //for var s in squares QUITARRR
-        for (int i = 0; i < squares.size(); i++) {
-            if(digits.indexOf(grid2.charAt(i)) >= 0 && assign(values, squares.get(i), String.valueOf(grid2.charAt(i))) == null){
-                return false; //Fail if we can't assign the digit to the square.
+
+        for (int i = 0, k = 0; i < grid.length; i++) {
+            for (int j = 0; j < grid[i].length; j++, k++) {
+                String value = grid[i][j];
+                //If the value in the square is between 1 and 9 and the value can''t be assigned then return false
+                if(digits.indexOf(value) >= 0 && assign(values, squares.get(k), value) == null){
+                    return false; //Fail if we can't assign the digit to the square.
+                }
             }
         }
         return true;
@@ -111,9 +142,9 @@ public class Sudoku{
 
     /**
      * Eliminate all the other values (except digit) from values.get(square) and propagate.
-     * @return False if a contradiction is detected
+     * @return Null if a contradiction is detected
      */
-    private Dictionary<String, String> assign(Dictionary<String, String> valuesP, String square, String digit){
+    public Dictionary<String, String> assign(Dictionary<String, String> valuesP, String square, String digit){
         boolean result = true;
         String other_values = valuesP.get(square).replace(digit, "");
         for(int i = 0; i < other_values.length(); i++){
@@ -141,6 +172,7 @@ public class Sudoku{
         valuesP.put(square, tempDigits);
         // If a square is reduced to one value d2, then eliminate d2 from the peers.
         if (valuesP.get(square).length() == 0){
+            //The null simulates a false
             return null; //Contradiction: removed last value
         } else if (valuesP.get(square).length() == 1) { // If there is only one value left in square, remove it from peers
             boolean result = true;
@@ -148,7 +180,7 @@ public class Sudoku{
                 result = result && (eliminate(valuesP, peers.get(square).get(i), valuesP.get(square)) != null ? true : false);
             }
             if(!result){
-                return null;
+                return null; //Simulate a false
             }
         }
         // If a unit is reduced to only one place for a value d, then put it there.
@@ -162,62 +194,151 @@ public class Sudoku{
             }
 
             if (dPlaces.size() == 0){
+                //The null simulates a false
                 return null; //Contradiction: no place for this value
             } else if (dPlaces.size() == 1) {
                 //the digit can only be in one place in unit, assign it there
                 if(assign(valuesP, dPlaces.get(0), digit) == null){
-                    return null;
+                    return null; //Simulate a false
                 }
             }
         }
         return valuesP;
     }
 
-    public String display(Dictionary<String, String> valuesP){
-        String grid = "";
-        for (int i = 0, j = 1, k = 1, l = 1; i < squares.size(); i++, j++, k++) {
-            if(l == 4){
-                grid += "------+------+------\n";
-                l = 1;
-            }
-            if(j == 3){
-                if(k == 9){
-                    grid += valuesP.get(squares.get(i)) + "\n";
-                    k = 0;
-                    l ++;
-                }else{
-                    grid += valuesP.get(squares.get(i)) + " |";
-                }
-                j = 0;
-            }else{
-                grid += valuesP.get(squares.get(i)) + " ";
-            }
-        }
-        return grid;
-    }
-
-    public String solve(String grid){
+    public void solve(String[][] grid){
         boolean allIsGood = parseGrid(grid);
-        if(allIsGood){
-            Dictionary<String, String> solution = search(values);
-            return display(solution);
-        }else{
-            return "Error";
+        if(allIsGood) {
+            findAllSolutions();
+            parseSolutionToString();
+            checkUniqueSolution();
+        }
+        makeGrids();
+        createFile();
+    }
+    private void findAllSolutions(){
+        int tasks = 0;
+        try {
+            poolSemaphore.acquire();
+            boolean allSquaresHaveOneValue = true;
+            for (int i = 0; i < squares.size(); i++) {
+                String tempSquare = squares.get(i);
+                String tempDigits = values.get(tempSquare);
+                if(tempDigits.length() > 1){
+                    allSquaresHaveOneValue = false;
+                    for (int j = 0; j < tempDigits.length(); j++) {
+                        Runnable task = new TaskDigit(values, tempDigits.charAt(j), tempSquare, this);
+                        tasks++;
+                        pool.execute(task);
+                    }
+                }
+            }
+            if (allSquaresHaveOneValue){
+                solDicSemaphore.acquire();
+                solutionsDic.add(values);
+                solDicSemaphore.release();
+            }
+            poolSemaphore.release();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        pool.shutdown();
+        waitForPool(tasks);
+    }
+
+    private void waitForPool(int task){
+        try {
+            poolSemaphore.acquire();
+            while (pool.getQueue().size() > 0 || pool.getActiveCount() > 0 || pool.getCompletedTaskCount() < task){
+                Thread.yield();
+            }
+            poolSemaphore.release();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    
+    private void parseSolutionToString(){
+        int tasks = 0;
+        try {
+            poolSemaphore.acquire();
+            pool = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_THREADS);
+            int initialSize = solutionsDic.size();
+            for (int i = 0; i < initialSize; i++) {
+                Runnable task = new TaskDictionary(this);
+                tasks++;
+                pool.execute(task);
+            }
+            poolSemaphore.release();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        pool.shutdown();
+        waitForPool(tasks);
+    }
+
+    private void checkUniqueSolution(){
+        //It would be faster if fork join is used
+        int originalSize = solutionsStr.size();
+        for (int i = 0; i < originalSize; i++) {
+            String possibleSolution = solutionsStr.poll();
+            if(!solutions.contains(possibleSolution)){
+                solutions.add(possibleSolution);
+            }
         }
     }
 
-    private Dictionary<String, String> search(Dictionary<String, String> valuesP){
-        //"Using depth-first search and propagation, try all possible values."
-        /**
-        boolean solved = true;
-        for (int i = 0; i < squares.size(); i++) {
-            if (values.get(squares.get(i)).length() != 1){
-                solved = false;
+    private void makeGrids(){
+        int tasks = 0;
+        try {
+            poolSemaphore.acquire();
+            pool = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_THREADS);
+            int numSolutions = solutions.size();
+            if(numSolutions == 0){
+                outputMessage += "There is no solution for this sudoku\n";
+            }else{
+                if(numSolutions == 1){
+                    outputMessage += "There is 1 solution for this sudoku\n";
+                }else{
+                    outputMessage += "There are " + numSolutions + " solutions for this sudoku\n";
+                }
+                for (int i = 0; i < solutions.size(); i++) {
+                    Runnable task = new TaskGrid(this, solutions.get(i));
+                    tasks++;
+                    pool.execute(task);
+                }
             }
+            poolSemaphore.release();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
-        if (solved){
-            return true;
-        }**/
+        pool.shutdown();
+        waitForPool(tasks);
+    }
+
+    private void createFile(){
+        try {
+            PrintWriter printWriter = new PrintWriter(Sudoku.PATH);
+            printWriter.write(outputMessage);
+            printWriter.close();
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public void addGrid(String grid){
+        try {
+            messageSemaphore.acquire();
+            outputMessage += grid+"\n";
+            messageSemaphore.release();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public ArrayList<Dictionary<String, String>> search(Dictionary<String, String> valuesP, ArrayList<Dictionary<String, String>> solutions){
+        //"Using depth-first search and propagation, try all possible values."
+
         //Search the square with the minimum number of digits
         if (valuesP == null){
             return null;
@@ -235,19 +356,21 @@ public class Sudoku{
                 minSquare = tempSquare;
             }
         }
+        //If all the squares only have one digit
         if(max == 1){
-            return valuesP; //Solved
+            solutions.add(valuesP);
+            return solutions; //Solved
         }
         for (int i = 0; i < valuesP.get(minSquare).length(); i++) {
-            Dictionary<String, String> result = search(assign(makeACopyOfValues(valuesP), minSquare, String.valueOf(valuesP.get(minSquare).charAt(i))));
+            ArrayList<Dictionary<String, String>> result = search(assign(makeACopyOfValues(valuesP), minSquare, String.valueOf(valuesP.get(minSquare).charAt(i))), solutions);
             if(result != null){
                 return result;
             }
         }
-        return null;
+        return null; //Simulates a false
     }
 
-    private Dictionary<String, String> makeACopyOfValues(Dictionary<String, String> valuesP){
+    public Dictionary<String, String> makeACopyOfValues(Dictionary<String, String> valuesP){
         Dictionary<String, String> valuesCopy = new Hashtable<>();
         for (int i = 0; i < squares.size(); i++) {
             valuesCopy.put(squares.get(i), valuesP.get(squares.get(i)));
@@ -255,6 +378,17 @@ public class Sudoku{
         return valuesCopy;
     }
 
+    public void addPossibleSolution(Dictionary<String, String> solution){
+        solutionsDic.add(solution);
+    }
+
+    public void addPossibleSolution(String solution){
+        solutionsStr.add(solution);
+    }
+
+    public void addSolution(String solution){
+        solutions.add(solution);
+    }
 
     private boolean isMember (String item, ArrayList<String> list){
         return list.contains(item);
@@ -266,5 +400,37 @@ public class Sudoku{
 
     public Dictionary<String, ArrayList<String>> getPeers() {
         return peers;
+    }
+
+    public Dictionary<String, String> getValues() {
+        return values;
+    }
+
+    public Queue<Dictionary<String, String>> getSolutionsDic() {
+        return solutionsDic;
+    }
+
+    public List<String> getSquares() {
+        return squares;
+    }
+
+    public Queue<String> getSolutionsStr() {
+        return solutionsStr;
+    }
+
+    public ArrayList<String> getSolutions() {
+        return solutions;
+    }
+
+    public ThreadPoolExecutor getPool() {
+        return pool;
+    }
+
+    public Semaphore getSolDicSemaphore() {
+        return solDicSemaphore;
+    }
+
+    public Semaphore getSolStrSemaphore() {
+        return solStrSemaphore;
     }
 }
