@@ -1,3 +1,4 @@
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Dictionary;
 import java.util.List;
@@ -6,20 +7,22 @@ public class TaskDictionary implements Runnable {
 
     private Sudoku sudoku;
 
-    public TaskDictionary(Sudoku sudokuP){
+    private PrintWriter printWriter;
+
+    public TaskDictionary(Sudoku sudokuP, PrintWriter printWriterP){
         sudoku = sudokuP;
+        printWriter = printWriterP;
     }
 
     @Override
     public void run() {
         try {
             sudoku.getSolDicSemaphore().acquire();
-            Dictionary<String, String> possibleSolution = sudoku.getSolutionsDic().poll();
+            Dictionary<String, String> solutionGrid = sudoku.getSolutionsDic().poll();
             sudoku.getSolDicSemaphore().release();
-            if(possibleSolution != null){
-                sudoku.getSolStrSemaphore().acquire();
-                sudoku.addPossibleSolution(dictionaryToString(possibleSolution, sudoku.getSquares()));
-                sudoku.getSolStrSemaphore().release();
+            if(solutionGrid != null){
+                String solutionText = dictionaryToString(solutionGrid, sudoku.getSquares());
+                sudoku.writeText(printWriter,solutionText);
             }
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
