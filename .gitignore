@@ -5,3 +5,6 @@
 build
 
 .idea
+
+sudokuComponent/src/main/resources/solutions.txt
+sudokuComponent/src/main/resources/solutionsFinal.txt

@@ -288,13 +288,14 @@ public class Sudoku {
         }
     }
 
-    public Dictionary<String, String> search(Dictionary<String, String> valuesP, PrintWriter printWriter) {
+    public boolean search(Dictionary<String, String> valuesP, PrintWriter printWriter) {
         //"Using depth-first search and propagation, try all possible values."
 
-        //Search the square with the minimum number of digits
         if (valuesP == null) {
-            return null;
+            return false; //Failed earlier
         }
+
+        //Search the square with the minimum number of digits
         int min = digits.length() + 1;
         int max = 1;
         String minSquare = null;
@@ -318,20 +319,19 @@ public class Sudoku {
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
-            return valuesP; //Solved
+            return true; //Solved
         }
 
         Dictionary<String, String> oneSolution = null;
+        boolean atLeastOneSolution = false;
         for (int i = 0; i < valuesP.get(minSquare).length(); i++) {
-            Dictionary<String, String> result = search(assign(makeACopyOfValues(valuesP), minSquare, String.valueOf(valuesP.get(minSquare).charAt(i))), printWriter);
-            if (result != null) {
-                oneSolution = result;
-            }
+            boolean result = search(assign(makeACopyOfValues(valuesP), minSquare, String.valueOf(valuesP.get(minSquare).charAt(i))), printWriter);
+            atLeastOneSolution = atLeastOneSolution || result;
         }
-        if (oneSolution != null) {
-            return oneSolution;
+        if (atLeastOneSolution) {
+            return true; //There is at least one solution
         }
-        return null; //Simulates a false
+        return false; //Simulates a false
     }
 
     public Dictionary<String, String> makeACopyOfValues(Dictionary<String, String> valuesP) {
