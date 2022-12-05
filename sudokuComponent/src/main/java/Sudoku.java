@@ -225,9 +225,7 @@ public class Sudoku{
     }
     private void findAllSolutions(){
         System.out.println("Finding all solutions");
-        int tasks = 0;
         try {
-            poolSemaphore.acquire();
             boolean allSquaresHaveOneValue = true;
             for (int i = 0; i < squares.size(); i++) {
                 String tempSquare = squares.get(i);
@@ -236,8 +234,8 @@ public class Sudoku{
                     allSquaresHaveOneValue = false;
                     for (int j = 0; j < tempDigits.length(); j++) {
                         Runnable task = new TaskDigit(values, tempDigits.charAt(j), tempSquare, this);
-                        tasks++;
-                        pool.execute(task);
+                        System.out.println("Running digit " +tempDigits.charAt(j) + " of square "+tempSquare);
+                        task.run();
                     }
                 }
             }
@@ -246,12 +244,9 @@ public class Sudoku{
                 solutionsDic.add(values);
                 solDicSemaphore.release();
             }
-            poolSemaphore.release();
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-        pool.shutdown();
-        waitForPool(tasks);
     }
 
     private void waitForPool(int task){

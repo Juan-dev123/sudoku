@@ -20,6 +20,7 @@ public class TaskDigit implements Runnable{
 
     @Override
     public void run(){
+        System.out.println("Running...");
         ArrayList<Dictionary<String, String>> solutions = searchWithDigit(values, digit);
         if(solutions != null){
             try {
