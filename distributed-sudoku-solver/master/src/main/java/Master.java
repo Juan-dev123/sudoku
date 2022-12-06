@@ -54,6 +54,7 @@ public class Master {
 
         try(Communicator communicator = Util.initialize(args, "config.client", extraArgs))
         {
+            long start = System.currentTimeMillis();
             
             String[][] sudokuArray = readSudoku();
 
@@ -88,6 +89,11 @@ public class Master {
             }
             
             waitForServerTask();
+
+            long finish = System.currentTimeMillis();
+
+            System.out.println("It took " + (finish-start) + "ms, " + (finish-start)/1000 + "s, " + (finish-start)/60000 + "m or " + (finish-start)/3600000 + "h to solve.");
+
             sudokuCom.getPool().shutdown();
             sudokuCom.waitForPool(tasks);
             sudokuCom.getPrintWriter().close();
