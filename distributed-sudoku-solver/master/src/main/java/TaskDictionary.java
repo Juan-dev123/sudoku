@@ -32,7 +32,7 @@ public class TaskDictionary implements Runnable {
         StringBuilder grid = new StringBuilder();
         for (int i = 0, j = 1, k = 1, l = 1; i < representationOfGrid.length(); i++, j++, k++){
             if(l == 4){
-                grid.append("------+------+------\n");
+                grid.append("------+-------+------\n");
                 l = 1;
             }
             grid.append(representationOfGrid.charAt(i));

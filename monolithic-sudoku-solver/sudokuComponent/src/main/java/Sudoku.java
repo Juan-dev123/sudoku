@@ -111,15 +111,18 @@ public class Sudoku {
             //To start, every square can be any digit; then assign values from the grid.
             values.put(square, digits);
         }
-
-        for (int i = 0, k = 0; i < grid.length; i++) {
-            for (int j = 0; j < grid[i].length; j++, k++) {
-                String value = grid[i][j];
-                //If the value in the square is between 1 and 9 and the value can''t be assigned then return false
-                if (digits.contains(value) && assign(values, squares.get(k), value) == null) {
-                    return false; //Fail if we can't assign the digit to the square.
+        try {
+            for (int i = 0, k = 0; i < grid.length; i++) {
+                for (int j = 0; j < grid[i].length; j++, k++) {
+                    String value = grid[i][j];
+                    //If the value in the square is between 1 and 9 and the value can''t be assigned then return false
+                    if (digits.contains(value) && assign(values, squares.get(k), value) == null) {
+                        return false; //Fail if we can't assign the digit to the square.
+                    }
                 }
             }
+        } catch (IndexOutOfBoundsException e) {
+            return false;
         }
         return true;
     }

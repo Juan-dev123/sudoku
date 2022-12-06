@@ -1,6 +1,4 @@
-import java.io.*;
 import java.util.*;
-import java.util.concurrent.*;
 
 //Adapted from http://norvig.com/sudoku.html and http://pankaj-k.net/sudoku/sudoku.js
 public class Sudoku {
@@ -12,7 +10,6 @@ public class Sudoku {
     private final Dictionary<String, ArrayList<ArrayList<String>>> units;
     private final Dictionary<String, ArrayList<String>> peers;
     private final Dictionary<String, String> values;
-    private boolean isOnlySolution;
 
     public Sudoku() {
         squares = cross(rows, cols);
@@ -23,7 +20,6 @@ public class Sudoku {
         peers = new Hashtable<>();
         fillPeers();
         values = new Hashtable<>();
-        isOnlySolution = false;
     }
 
     private ArrayList<String> cross(String[] rowsP, String[] colsP) {
@@ -88,15 +84,18 @@ public class Sudoku {
             //To start, every square can be any digit; then assign values from the grid.
             values.put(square, digits);
         }
-
-        for (int i = 0, k = 0; i < grid.length; i++) {
-            for (int j = 0; j < grid[i].length; j++, k++) {
-                String value = grid[i][j];
-                //If the value in the square is between 1 and 9 and the value can''t be assigned then return false
-                if (digits.contains(value) && assign(values, squares.get(k), value) == null) {
-                    return false; //Fail if we can't assign the digit to the square.
+        try {
+            for (int i = 0, k = 0; i < grid.length; i++) {
+                for (int j = 0; j < grid[i].length; j++, k++) {
+                    String value = grid[i][j];
+                    //If the value in the square is between 1 and 9 and the value can''t be assigned then return false
+                    if (digits.contains(value) && assign(values, squares.get(k), value) == null) {
+                        return false; //Fail if we can't assign the digit to the square.
+                    }
                 }
             }
+        } catch (IndexOutOfBoundsException e) {
+            return false;
         }
         return true;
     }
@@ -169,10 +168,20 @@ public class Sudoku {
 
     public ArrayList<Dictionary<String, String>> solve(String[][] grid) {
         ArrayList<Dictionary<String, String>> possibleValues = null;
+        ArrayList<Dictionary<String, String>> possibleValues1 = new ArrayList<>();
         boolean allIsGood = parseGrid(grid);
         if (allIsGood) {
-            System.out.println("Finding all solutions");
             possibleValues = findMinimalSolutions(values);
+            int originalSize = possibleValues.size();
+            for (int i = 0; i < originalSize; i++) {
+                possibleValues1.add(possibleValues.remove(0));
+            }
+            for (Dictionary<String, String> stringStringDictionary : possibleValues1) {
+                ArrayList<Dictionary<String, String>> possibleValuesTemp;
+                possibleValuesTemp = findMinimalSolutions(stringStringDictionary);
+                possibleValues.addAll(possibleValuesTemp);
+            }
+
         }
         return possibleValues;
     }
@@ -194,7 +203,6 @@ public class Sudoku {
         }
         if (max == 1) {
             possibleValues.add(valuesP);
-            isOnlySolution = true;
             return possibleValues;
         }
         for (int i = 0; i < valuesP.get(minSquare).length(); i++) {

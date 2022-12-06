@@ -68,23 +68,14 @@ public class Master {
             adapter.activate();
             Demo.CallbackPrx callPrx = Demo.CallbackPrx.uncheckedCast(objPrx);
 
-            SolverPrx solver;
-
-            try{
-                solver = SolverPrx.checkedCast(communicator.stringToProxy("SimpleSolver"));
-            }catch (Exception ex){
-                QueryPrx query = com.zeroc.IceGrid.QueryPrx.checkedCast(communicator.stringToProxy("DemoIceGrid/Query"));
-                solver = SolverPrx.checkedCast(query.findObjectByType("::Demo::Solver"));
-            }
-
-            if(solver == null){
-                throw new Error("Invalid proxy");
-            }
             if(possibleValues!=null){
                 for (Dictionary<String, String> possibleValue : possibleValues) {
-                    String grid = sudokuCom.dictionaryToString(possibleValue);
-                    solver.findSolutions(grid, callPrx);
-                    sudokuCom.addServerTask();
+                    if (possibleValue != null) {
+                        String grid = sudokuCom.dictionaryToString(possibleValue);
+                        SolverPrx solver = getSolver(communicator);
+                        new Thread(() -> solver.findSolutions(grid, callPrx)).start();
+                        sudokuCom.addServerTask();
+                    }
                 }
             }
             
@@ -100,6 +91,15 @@ public class Master {
             sudokuCom.organizeFile();
         }
         
+    }
+
+    private static SolverPrx getSolver(Communicator communicator){
+        try{
+            return SolverPrx.checkedCast(communicator.stringToProxy("SimpleSolver"));
+        }catch (Exception e){
+            QueryPrx query = com.zeroc.IceGrid.QueryPrx.checkedCast(communicator.stringToProxy("DemoIceGrid/Query"));
+            return SolverPrx.checkedCast(query.findObjectByType("::Demo::Solver"));
+        }
     }
 
     private static void waitForServerTask(){
