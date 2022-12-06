@@ -1,0 +1,20 @@
+<icegrid>
+    <application name="Simple">
+        <server-template id="SimpleSolver">
+            <parameter name="index"/>
+            <parameter name="host"/>
+            <parameter name="port"/>
+            <server id="SimpleSolver-${index}" exe="java" activation="on-demand">
+                <option>-jar</option>
+                <option>../worker/build/libs/worker.jar</option>
+                <adapter name="Solver" endpoints="tcp -h ${host} -p ${port}">
+                    <object identity="SimpleSolver-${index}" type="::Demo::Solver" property="Identity"/>
+                </adapter>
+            </server>
+        </server-template>
+
+        <node name="node1">
+            <server-instance template="SimpleSolver" index="1" host="10.147.19.121" port="8058"/>
+        </node>
+    </application>
+</icegrid>

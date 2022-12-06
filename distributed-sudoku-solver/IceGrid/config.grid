@@ -1,0 +1,33 @@
+#
+# The IceGrid instance name.
+#
+IceGrid.InstanceName=DemoIceGrid
+
+#
+# The IceGrid locator proxy.
+#
+Ice.Default.Locator=DemoIceGrid/Locator:default -h 10.147.19.121 -p 8055
+
+#
+# IceGrid registry configuration.
+#
+IceGrid.Registry.Client.Endpoints=default -h 10.147.19.121 -p 8055
+IceGrid.Registry.Server.Endpoints=default -h 10.147.19.121 -p 8156
+IceGrid.Registry.Internal.Endpoints=default -h 10.147.19.121 -p 8257
+IceGrid.Registry.LMDB.Path=db/registry
+IceGrid.Registry.PermissionsVerifier=DemoIceGrid/NullPermissionsVerifier
+IceGrid.Registry.AdminPermissionsVerifier=DemoIceGrid/NullPermissionsVerifier
+IceGrid.Registry.SSLPermissionsVerifier=DemoIceGrid/NullSSLPermissionsVerifier
+IceGrid.Registry.AdminSSLPermissionsVerifier=DemoIceGrid/NullSSLPermissionsVerifier
+IceGrid.Registry.Discovery.Interface=127.0.0.1
+
+
+#
+# IceGrid node configuration.
+#
+IceGrid.Node.Name=node1
+IceGrid.Node.Endpoints=default -h 10.147.19.121 -p 8358
+IceGrid.Node.Data=db/node
+IceGrid.Node.CollocateRegistry=1
+#IceGrid.Node.Output=db
+#IceGrid.Node.RedirectErrToOut=1
