@@ -82,9 +82,11 @@ public class Master {
             }
             if(possibleValues!=null){
                 for (Dictionary<String, String> possibleValue : possibleValues) {
-                    String grid = sudokuCom.dictionaryToString(possibleValue);
-                    solver.findSolutions(grid, callPrx);
-                    sudokuCom.addServerTask();
+                    if (possibleValue != null) {
+                        String grid = sudokuCom.dictionaryToString(possibleValue);
+                        solver.findSolutions(grid, callPrx);
+                        sudokuCom.addServerTask();
+                    }
                 }
             }
             
