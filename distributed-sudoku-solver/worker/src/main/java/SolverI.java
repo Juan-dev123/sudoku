@@ -12,7 +12,7 @@ public class SolverI implements Solver {
     private final String[] rows = {"A", "B", "C", "D", "E", "F", "G", "H", "I"};
     private final String[] cols = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
 
-    static final int MAX_THREADS = 16;
+    static final int MAX_THREADS = 12;
     private final List<String> squares;
     private final List<ArrayList<String>> unitList;
     private final Dictionary<String, ArrayList<ArrayList<String>>> units;

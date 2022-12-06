@@ -5,9 +5,13 @@ import java.io.IOException;
 public class SudokuComponent {
 
     public static void main(String[] args){
+        long start = System.currentTimeMillis();
         String[][] sudokuArray = readSudoku();
         Sudoku sudoku = new Sudoku();
         sudoku.solve(sudokuArray);
+        long finish = System.currentTimeMillis();
+        sudoku.organizeFile();
+        System.out.println("It took " + (finish-start) + "ms, " + (finish-start)/1000 + "s, " + (finish-start)/60000 + "m or " + (finish-start)/3600000 + "h to solve.");
     }
 
     private static String[][] readSudoku(){

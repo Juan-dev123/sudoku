@@ -204,13 +204,12 @@ public class Sudoku {
                     waitForPool(tasks);
             }
             printWriter.close();
-            organizeFile();
         } catch (FileNotFoundException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private void organizeFile() {
+    public void organizeFile() {
         try {
             System.out.println("Organizing file...");
             BufferedReader bufferedReader = new BufferedReader(new FileReader(PATH_SOLUTIONS));
