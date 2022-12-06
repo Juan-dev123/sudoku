@@ -258,13 +258,12 @@ public class Sudoku {
     private String getNumberOfSolutions() {
 
         if (tasks == 0) {
-            return "There is no solution for this sudoku";
+            return "There is no solution for this sudoku\n";
+        }
+        if (tasks == 1) {
+            return "There is 1 solution for this sudoku\n";
         } else {
-            if (tasks == 1) {
-                return "There is 1 solution for this sudoku";
-            } else {
-                return "There are " + tasks + " solutions for this sudoku";
-            }
+            return "There are " + tasks + " solutions for this sudoku\n";
         }
     }
 
