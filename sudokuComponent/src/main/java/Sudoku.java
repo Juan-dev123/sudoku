@@ -196,19 +196,18 @@ public class Sudoku {
 
     public void solve(String[][] grid) {
         boolean allIsGood = parseGrid(grid);
-        if (allIsGood) {
-            PrintWriter printWriter = null;
-            try {
-                printWriter = new PrintWriter(PATH_SOLUTIONS);
+        try {
+            PrintWriter printWriter = new PrintWriter(PATH_SOLUTIONS);
+            if (allIsGood) {
                 writeText(printWriter, "");
-                findAllSolutions(printWriter);
-                pool.shutdown();
-                waitForPool(tasks);
-                printWriter.close();
-                organizeFile();
-            } catch (FileNotFoundException e) {
-                throw new RuntimeException(e);
+                    findAllSolutions(printWriter);
+                    pool.shutdown();
+                    waitForPool(tasks);
             }
+            printWriter.close();
+            organizeFile();
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
         }
     }
 
