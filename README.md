@@ -1,6 +1,6 @@
 # Sudoku 📝
 
-[_Instructions for deploying, compiling, and running the project._](https://github.com/Juan-dev123/sudoku/blob/main/documentos/readme.docx)
+[_Instructions for deploying, compiling, and running the project._](https://github.com/Juan-dev123/sudoku/blob/main/sudoku-documents/Instructions%20for%20deploying,%20compiling,%20and%20running%20the%20project.docx)
 
 ## Starting 🚀
 
