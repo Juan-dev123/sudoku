@@ -2,21 +2,7 @@
 
 _Instructions for deploying, compiling, and running the project._
 
-First go to the documents folder with `cd Documents`, clone the project with `git clone https://github.com/Juan-dev123/sudoku` and rename the project folder with SudokuPECA.
-
-Now in the file generator/src/main/resources/inputSudoku.txt enter the sudoku you want to solve.
-
-Compress the project folder so that there is SudokuPECA.zip.
-
-Use the command `scp ./SudokuPECA.zip user@ip:/home/user/Documents/` to copy the .zip to the chosen machine and enter your user password.
-
-You must connect to the computer where you want to deploy by means of a command `ssh user@ip` and enter user password.
-
-Browse to the location of the compressed file and use the `unzip SudokuPECA.zip` command to extract its contents.
-
-Enter the folder with `cd SudokuPECA` and build the entire project with the `gradle build` command.
-
-Finally run the .jar generated with the command `java -jar sudokuComponent/build/libs/sudokuComponent.jar`.
+[Instructions](https://github.com/Juan-dev123/sudoku/blob/main/documentos/readme.docx)
 
 ## Starting 🚀
 
