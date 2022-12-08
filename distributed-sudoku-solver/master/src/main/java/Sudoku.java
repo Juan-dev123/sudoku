@@ -174,7 +174,10 @@ public class Sudoku {
             possibleValues = findMinimalSolutions(values);
             int originalSize = possibleValues.size();
             for (int i = 0; i < originalSize; i++) {
-                possibleValues1.add(possibleValues.remove(0));
+                Dictionary<String, String> tempDictionary = possibleValues.remove(0);
+                if(tempDictionary != null){
+                    possibleValues1.add(tempDictionary);
+                }
             }
             for (Dictionary<String, String> stringStringDictionary : possibleValues1) {
                 ArrayList<Dictionary<String, String>> possibleValuesTemp;
